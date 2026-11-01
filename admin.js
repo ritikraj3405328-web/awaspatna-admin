@@ -1,4 +1,32 @@
 import { 
+  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs,
+  signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "./firebase-config.js";
+
+// Purane login() function ki jagah ye lagayein:
+async function login() {
+  const email = $('#admEmail').value.trim();
+  const pass = $('#pin').value;
+  if (!email || !pass) {
+    $('#pinErr').textContent = 'Email aur Password dono daalein';
+    return;
+  }
+  $('#pinErr').textContent = 'Verifying Admin...';
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+    $('#pinErr').textContent = '';
+    $('#login').classList.add('hidden');
+    $('#app').classList.remove('hidden');
+    history.replaceState({ tab: 'dash', flt: 'all', modalOpen: false }, '', '#dash');
+    ensureSeedData();
+    startListeners();
+    render();
+  } catch (err) {
+    $('#pinErr').textContent = 'Access Denied! Galat Admin Email ya Password.';
+  }
+}
+
+import { 
   db, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs 
 } from "./firebase-config.js";
 
