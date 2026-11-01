@@ -34,13 +34,15 @@
   <div class="cd w-full max-w-sm p-7 text-center" style="border-radius:30px">
     <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
     <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
-    <p class="text-sm mt-1" style="color:var(--mut)">Sirf authorised admin ke liye</p>
-    <input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Admin PIN" class="fld mt-5 text-center tracking-[.5em] text-lg">
+    <p class="text-sm mt-1" style="color:var(--mut)">Encrypted Firebase Admin Login</p>
+    <input id="admEmail" type="email" placeholder="Admin Email" class="fld mt-5 text-sm">
+    <input id="pin" type="password" placeholder="Admin Password" class="fld mt-2.5 text-sm">
     <p id="pinErr" class="text-xs text-red-500 mt-2 h-4"></p>
-    <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Login karein</button>
-    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Demo PIN: 1234 · Asli site par PIN server par check hona chahiye</p>
+    <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Secure Login karein</button>
+    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Protected by Firebase Authentication & Security Rules</p>
   </div>
 </div>
+
 
 <!-- MAIN ADMIN APP -->
 <div id="app" class="hidden relative max-w-md mx-auto min-h-screen">
