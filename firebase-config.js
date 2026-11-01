@@ -26,3 +26,13 @@ export {
   db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs, query, orderBy,
   RecaptchaVerifier, signInWithPhoneNumber, onAuthStateChanged, signOut 
 };
+
+import { 
+  getAuth, RecaptchaVerifier, signInWithPhoneNumber, signInWithEmailAndPassword, onAuthStateChanged, signOut 
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+
+// Baaki config same rahega, bas export mein signInWithEmailAndPassword jodein:
+export { 
+  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs, query, orderBy,
+  RecaptchaVerifier, signInWithPhoneNumber, signInWithEmailAndPassword, onAuthStateChanged, signOut 
+};
