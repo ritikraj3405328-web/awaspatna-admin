@@ -27,7 +27,24 @@
 <symbol id="i-out" viewBox="0 0 24 24"><path d="M10 4H5v16h5M16 8l4 4-4 4M20 12H9"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
 <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1112 0v5l2 2H4zM10 21h4"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></symbol>
 </defs></svg>
+
+<!-- 7-SECOND AUTO-HIDE INSTALL POPUP -->
+<div id="installPopup" class="fixed top-16 left-1/2 -translate-x-1/2 z-[80] w-[92%] max-w-sm p-3 rounded-2xl shadow-2xl flex items-center justify-between gap-2.5 transition-all duration-300" style="background:#14142b;color:#fff;border:1px solid rgba(255,255,255,.18)">
+  <div class="flex items-center gap-2.5 min-w-0">
+    <span class="grad w-9 h-9 rounded-xl grid place-items-center shrink-0"><svg class="ic !w-4 !h-4"><use href="#i-dl"/></svg></span>
+    <div class="min-w-0">
+      <div class="hd font-extrabold text-xs truncate">AwasPatna Admin App</div>
+      <div class="text-[10px] opacity-80 truncate">Fast approval alerts ke liye install karein</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-1.5 shrink-0">
+    <button id="popupInstallBtn" class="grad px-3 py-1.5 rounded-xl text-[11px] font-extrabold">Install</button>
+    <button id="popupCloseBtn" class="w-7 h-7 rounded-lg grid place-items-center bg-white/10 text-xs">✕</button>
+  </div>
+</div>
 
 <!-- SECURE FIREBASE LOGIN -->
 <div id="login" class="fixed inset-0 z-50 grad grid place-items-center p-6">
@@ -35,7 +52,7 @@
     <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
     <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
     <p class="text-sm mt-1" style="color:var(--mut)">Encrypted Firebase Auth Login</p>
-    <input id="admEmail" type="email" placeholder="Admin Email (jaise admin@awaspatna.com)" class="fld mt-5 text-sm" style="user-select:text">
+    <input id="admEmail" type="email" placeholder="Admin Email (mehtaprem362@gmail.com)" class="fld mt-5 text-sm" style="user-select:text">
     <input id="admPass" type="password" placeholder="Admin Password" class="fld mt-2.5 text-sm" style="user-select:text">
     <p id="pinErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
     <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Secure Login karein</button>
@@ -45,16 +62,32 @@
 
 <!-- MAIN ADMIN APP -->
 <div id="app" class="hidden relative max-w-md mx-auto min-h-screen">
-  <header class="bar px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-2.5">
-      <span class="w-9 h-9 rounded-xl bg-white grid place-items-center" style="color:var(--a)"><svg class="ic"><use href="#i-shield"/></svg></span>
-      <div class="leading-tight"><div class="hd font-extrabold text-[17px]">AwasPatna</div><div class="text-[10.5px] font-bold opacity-85 tracking-widest">ADMIN PANEL</div></div>
+  <header class="bar px-3.5 py-3 flex items-center justify-between gap-1">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="w-8 h-8 rounded-xl bg-white grid place-items-center shrink-0" style="color:var(--a)"><svg class="ic !w-4 !h-4"><use href="#i-shield"/></svg></span>
+      <div class="leading-tight truncate">
+        <div class="hd font-extrabold text-[15px] truncate">AwasPatna</div>
+        <div class="text-[9.5px] font-bold opacity-85 tracking-widest">ADMIN PANEL</div>
+      </div>
     </div>
-    <div class="flex items-center gap-2">
-      <button data-a="tab" data-v="lst" data-f="pending" class="glassc h-10 px-3 rounded-full text-xs font-extrabold flex items-center gap-1.5"><span id="pendN" class="bg-yellow-300 text-yellow-900 rounded-full min-w-5 h-5 px-1 grid place-items-center text-[10px]">0</span>Pending</button>
-      <button data-a="logout" class="glassc w-10 h-10 rounded-full grid place-items-center" aria-label="Logout"><svg class="ic"><use href="#i-out"/></svg></button>
+    <div class="flex items-center gap-1.5 shrink-0">
+      <!-- TOP INSTALL BUTTON -->
+      <button id="topInstallBtn" class="glassc h-9 px-2.5 rounded-full text-[11px] font-extrabold flex items-center gap-1" title="Install App">
+        <svg class="ic !w-3.5 !h-3.5"><use href="#i-dl"/></svg><span>Install</span>
+      </button>
+      <!-- NOTIFICATION PERMISSION BUTTON -->
+      <button id="admNotifBtn" class="glassc w-9 h-9 rounded-full grid place-items-center relative" title="Enable Approval Alerts">
+        <svg class="ic !w-4 !h-4"><use href="#i-bell"/></svg>
+        <span id="notifDot" class="w-2 h-2 rounded-full bg-yellow-300 absolute top-1.5 right-1.5"></span>
+      </button>
+      <!-- PENDING COUNT BUTTON -->
+      <button data-a="tab" data-v="lst" data-f="pending" class="glassc h-9 px-2.5 rounded-full text-[11px] font-extrabold flex items-center gap-1">
+        <span id="pendN" class="bg-yellow-300 text-yellow-900 rounded-full min-w-4 h-4 px-1 grid place-items-center text-[10px]">0</span>Pending
+      </button>
+      <button data-a="logout" class="glassc w-9 h-9 rounded-full grid place-items-center" aria-label="Logout"><svg class="ic !w-4 !h-4"><use href="#i-out"/></svg></button>
     </div>
   </header>
+
   <main id="view" class="px-4 pt-4 pb-36"></main>
 
   <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 px-3" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + .6rem)">
@@ -70,14 +103,19 @@
       <input id="nT" class="fld" placeholder="Title (jaise 2 BHK Flat)" style="user-select:text">
       <div class="grid grid-cols-2 gap-2.5">
         <select id="nTy" class="fld"><option>Room</option><option>Flat</option><option>Plot</option><option>Commercial</option></select>
-        <select id="nL" class="fld"><option>Boring Road</option><option>Kankarbagh</option><option>Rajendra Nagar</option><option>Patliputra</option><option>Bailey Road</option><option>Danapur</option></select>
+        <select id="nL" class="fld"></select>
       </div>
-      <input id="nP" class="fld" placeholder="Price (jaise ₹8,000/mo)" style="user-select:text">
+      <input id="nP" class="fld" placeholder="Price (jaise ₹8,000)" style="user-select:text">
       <select id="nO" class="fld"></select>
     </div>
     <p id="nErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
     <button data-a="saveAdd" class="grad w-full py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Listing save karein</button>
   </div>
+</div>
+
+<!-- FULL-SCREEN IMAGE ZOOM MODAL FOR ADMIN INSPECTION -->
+<div id="imgZoomModal" class="modal fixed inset-0 z-[75] flex items-center justify-center p-4" style="background:rgba(0,0,0,.88)" onclick="this.classList.remove('open')">
+  <img id="zoomImg" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl" alt="Property Preview">
 </div>
 
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[70] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7rem;background:#14142b"></div>
