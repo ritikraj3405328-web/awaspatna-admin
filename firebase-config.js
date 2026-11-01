@@ -1,7 +1,8 @@
-// firebase-config.js
+// firebase-config.js (FOR ADMIN APP: awaspatna-admin - FAST CACHE ENABLED)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
-  getFirestore, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs 
+  initializeFirestore, persistentLocalCache, getFirestore,
+  collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { 
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut 
@@ -18,7 +19,14 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+let db;
+try {
+  db = initializeFirestore(app, { localCache: persistentLocalCache() });
+} catch (e) {
+  db = getFirestore(app);
+}
+
 const auth = getAuth(app);
 auth.languageCode = 'en';
 
