@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>AwasPatna Admin App</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20a7 7 0 0114 0M16 4.5a3.5 3.5 0 010 7M18 14a7 7 0 013 6"/></symbol>
+<symbol id="i-ad" viewBox="0 0 24 24"><path d="M3 10v4h4l7 5V5L7 10zM17 9a4 4 0 010 6"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M10 4H5v16h5M16 8l4 4-4 4M20 12H9"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+<symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></symbol>
+</defs></svg>
+
+<!-- LOGIN -->
+<div id="login" class="fixed inset-0 z-50 grad grid place-items-center p-6">
+  <div class="cd w-full max-w-sm p-7 text-center" style="border-radius:30px">
+    <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
+    <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
+    <p class="text-sm mt-1" style="color:var(--mut)">Sirf authorised admin ke liye</p>
+    <input id="pin" type="password" inputmode="numeric" maxlength="8" placeholder="Admin PIN" class="fld mt-5 text-center tracking-[.5em] text-lg">
+    <p id="pinErr" class="text-xs text-red-500 mt-2 h-4"></p>
+    <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Login karein</button>
+    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Demo PIN: 1234 · Asli site par PIN server par check hona chahiye</p>
+  </div>
+</div>
+
+<!-- MAIN ADMIN APP -->
+<div id="app" class="hidden relative max-w-md mx-auto min-h-screen">
+  <header class="bar px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-xl bg-white grid place-items-center" style="color:var(--a)"><svg class="ic"><use href="#i-shield"/></svg></span>
+      <div class="leading-tight"><div class="hd font-extrabold text-[17px]">AwasPatna</div><div class="text-[10.5px] font-bold opacity-85 tracking-widest">ADMIN PANEL</div></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button data-a="tab" data-v="lst" data-f="pending" class="glassc h-10 px-3 rounded-full text-xs font-extrabold flex items-center gap-1.5"><span id="pendN" class="bg-yellow-300 text-yellow-900 rounded-full min-w-5 h-5 px-1 grid place-items-center text-[10px]">0</span>Pending</button>
+      <button data-a="logout" class="glassc w-10 h-10 rounded-full grid place-items-center" aria-label="Logout"><svg class="ic"><use href="#i-out"/></svg></button>
+    </div>
+  </header>
+  <main id="view" class="px-4 pt-4 pb-36"></main>
+
+  <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-30 px-3" style="padding-bottom:calc(env(safe-area-inset-bottom,0px) + .6rem)">
+    <div id="tabs" class="nv grid grid-cols-5 px-1 py-2.5 text-[10.5px] font-bold" style="color:var(--mut)"></div>
+  </nav>
+</div>
+
+<!-- ADD LISTING MODAL -->
+<div id="modal" class="modal fixed inset-0 z-50 flex items-end justify-center p-3" style="background:rgba(8,6,24,.6)">
+  <div class="sheet cd w-full max-w-md p-5" style="border-radius:28px">
+    <div class="flex items-center justify-between mb-3"><h3 class="hd font-extrabold text-lg">Nayi Listing Jodein</h3><button data-a="closeAdd" class="soft w-9 h-9 rounded-full grid place-items-center" aria-label="Close"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button></div>
+    <div class="grid gap-2.5">
+      <input id="nT" class="fld" placeholder="Title (jaise 2 BHK Flat)">
+      <div class="grid grid-cols-2 gap-2.5">
+        <select id="nTy" class="fld"><option>Room</option><option>Flat</option><option>Plot</option><option>Commercial</option></select>
+        <select id="nL" class="fld"><option>Boring Road</option><option>Kankarbagh</option><option>Rajendra Nagar</option><option>Patliputra</option><option>Bailey Road</option><option>Danapur</option></select>
+      </div>
+      <input id="nP" class="fld" placeholder="Price (jaise ₹8,000/mo)">
+      <select id="nO" class="fld"></select>
+    </div>
+    <p id="nErr" class="text-xs text-red-500 mt-2 h-4"></p>
+    <button data-a="saveAdd" class="grad w-full py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Listing save karein</button>
+  </div>
+</div>
+
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[70] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7rem;background:#14142b"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>
