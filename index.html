@@ -29,20 +29,19 @@
 <symbol id="i-block" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></symbol>
 </defs></svg>
 
-<!-- LOGIN -->
+<!-- SECURE FIREBASE LOGIN -->
 <div id="login" class="fixed inset-0 z-50 grad grid place-items-center p-6">
   <div class="cd w-full max-w-sm p-7 text-center" style="border-radius:30px">
     <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
     <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
-    <p class="text-sm mt-1" style="color:var(--mut)">Encrypted Firebase Admin Login</p>
-    <input id="admEmail" type="email" placeholder="Admin Email" class="fld mt-5 text-sm">
-    <input id="pin" type="password" placeholder="Admin Password" class="fld mt-2.5 text-sm">
-    <p id="pinErr" class="text-xs text-red-500 mt-2 h-4"></p>
+    <p class="text-sm mt-1" style="color:var(--mut)">Encrypted Firebase Auth Login</p>
+    <input id="admEmail" type="email" placeholder="Admin Email (jaise admin@awaspatna.com)" class="fld mt-5 text-sm" style="user-select:text">
+    <input id="admPass" type="password" placeholder="Admin Password" class="fld mt-2.5 text-sm" style="user-select:text">
+    <p id="pinErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
     <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Secure Login karein</button>
-    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Protected by Firebase Authentication & Security Rules</p>
+    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Protected by Firebase Security Rules & Auth</p>
   </div>
 </div>
-
 
 <!-- MAIN ADMIN APP -->
 <div id="app" class="hidden relative max-w-md mx-auto min-h-screen">
@@ -68,21 +67,21 @@
   <div class="sheet cd w-full max-w-md p-5" style="border-radius:28px">
     <div class="flex items-center justify-between mb-3"><h3 class="hd font-extrabold text-lg">Nayi Listing Jodein</h3><button data-a="closeAdd" class="soft w-9 h-9 rounded-full grid place-items-center" aria-label="Close"><svg class="ic !w-4 !h-4"><use href="#i-x"/></svg></button></div>
     <div class="grid gap-2.5">
-      <input id="nT" class="fld" placeholder="Title (jaise 2 BHK Flat)">
+      <input id="nT" class="fld" placeholder="Title (jaise 2 BHK Flat)" style="user-select:text">
       <div class="grid grid-cols-2 gap-2.5">
         <select id="nTy" class="fld"><option>Room</option><option>Flat</option><option>Plot</option><option>Commercial</option></select>
         <select id="nL" class="fld"><option>Boring Road</option><option>Kankarbagh</option><option>Rajendra Nagar</option><option>Patliputra</option><option>Bailey Road</option><option>Danapur</option></select>
       </div>
-      <input id="nP" class="fld" placeholder="Price (jaise ₹8,000/mo)">
+      <input id="nP" class="fld" placeholder="Price (jaise ₹8,000/mo)" style="user-select:text">
       <select id="nO" class="fld"></select>
     </div>
-    <p id="nErr" class="text-xs text-red-500 mt-2 h-4"></p>
+    <p id="nErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
     <button data-a="saveAdd" class="grad w-full py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Listing save karein</button>
   </div>
 </div>
 
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 z-[70] rounded-full px-4 py-2.5 text-xs font-bold text-white opacity-0 pointer-events-none transition-all" style="bottom:7rem;background:#14142b"></div>
-  
+
 <script type="module" src="admin.js"></script>
 </body>
 </html>
