@@ -1,4 +1,3 @@
-// firebase-config.js (FOR ADMIN APP: awaspatna-admin - FAST CACHE ENABLED)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { 
   initializeFirestore, persistentLocalCache, getFirestore,
