@@ -52,8 +52,8 @@
     <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
     <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
     <p class="text-sm mt-1" style="color:var(--mut)">Encrypted Firebase Auth Login</p>
-    <input id="admEmail" type="email" autocomplete="username" placeholder="Admin Email Address" class="fld mt-5 text-sm" style="user-select:text">
-    <input id="admPass" type="password" autocomplete="current-password" placeholder="Admin Password" class="fld mt-2.5 text-sm" style="user-select:text">
+    <input id="admEmail" type="email" placeholder="Admin Email (mehtaprem362@gmail.com)" class="fld mt-5 text-sm" style="user-select:text">
+    <input id="admPass" type="password" placeholder="Admin Password" class="fld mt-2.5 text-sm" style="user-select:text">
     <p id="pinErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
     <button id="enter" class="grad w-full h-13 py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Secure Login karein</button>
     <p class="text-[10.5px] mt-4" style="color:var(--mut)">Protected by Firebase Security Rules & Auth</p>
@@ -71,13 +71,16 @@
       </div>
     </div>
     <div class="flex items-center gap-1.5 shrink-0">
+      <!-- TOP INSTALL BUTTON -->
       <button id="topInstallBtn" class="glassc h-9 px-2.5 rounded-full text-[11px] font-extrabold flex items-center gap-1" title="Install App">
         <svg class="ic !w-3.5 !h-3.5"><use href="#i-dl"/></svg><span>Install</span>
       </button>
+      <!-- NOTIFICATION PERMISSION BUTTON -->
       <button id="admNotifBtn" class="glassc w-9 h-9 rounded-full grid place-items-center relative" title="Enable Approval Alerts">
         <svg class="ic !w-4 !h-4"><use href="#i-bell"/></svg>
         <span id="notifDot" class="w-2 h-2 rounded-full bg-yellow-300 absolute top-1.5 right-1.5"></span>
       </button>
+      <!-- PENDING COUNT BUTTON -->
       <button data-a="tab" data-v="lst" data-f="pending" class="glassc h-9 px-2.5 rounded-full text-[11px] font-extrabold flex items-center gap-1">
         <span id="pendN" class="bg-yellow-300 text-yellow-900 rounded-full min-w-4 h-4 px-1 grid place-items-center text-[10px]">0</span>Pending
       </button>
