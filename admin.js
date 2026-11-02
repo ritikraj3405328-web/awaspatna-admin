@@ -10,6 +10,22 @@ const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
 
+// Security helper: Sirf safe data:image/ ya https:// image URLs allow karein
+function safeImgSrc(url) {
+  const s = String(url ?? '').trim();
+  if (s.startsWith('data:image/') || s.startsWith('https://')) return esc(s);
+  return '';
+}
+
+function parseNumericPrice(priceStr) {
+  const s = String(priceStr || '').toLowerCase();
+  const num = parseFloat(s.replace(/[^0-9.]/g, '')) || 0;
+  if (s.includes('cr')) return num * 10000000;
+  if (s.includes('lakh') || s.includes('lac')) return num * 100000;
+  if (s.includes('k')) return num * 1000;
+  return num;
+}
+
 const LOCS = [
   'Boring Road', 'Kankarbagh', 'Rajendra Nagar', 'Patliputra', 'Bailey Road', 
   'Danapur', 'Kumhrar', 'Ashok Rajpath', 'Fraser Road', 'Exhibition Road', 
@@ -37,9 +53,13 @@ let D = {
 
 let knownPendingIds = new Set();
 let firstAdminLoadDone = false;
+let unsubListings = null;
+let unsubUsers = null;
+let unsubSettings = null;
 
 function toast(m) {
   const t = $('#toast');
+  if (!t) return;
   t.textContent = m;
   t.style.opacity = 1;
   t.style.transform = 'translate(-50%,-8px)';
@@ -54,7 +74,6 @@ function toast(m) {
 let deferredInstallPrompt = null;
 const installPopup = $('#installPopup');
 
-// Auto-hide install popup after exactly 7 seconds (7000ms)
 const popupTimer = setTimeout(() => {
   if (installPopup) {
     installPopup.style.opacity = '0';
@@ -63,10 +82,12 @@ const popupTimer = setTimeout(() => {
   }
 }, 7000);
 
-$('#popupCloseBtn').onclick = () => {
-  clearTimeout(popupTimer);
-  installPopup.classList.add('hidden');
-};
+if ($('#popupCloseBtn')) {
+  $('#popupCloseBtn').onclick = () => {
+    clearTimeout(popupTimer);
+    installPopup?.classList.add('hidden');
+  };
+}
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -85,8 +106,8 @@ async function triggerAppInstall() {
   }
 }
 
-$('#topInstallBtn').onclick = triggerAppInstall;
-$('#popupInstallBtn').onclick = triggerAppInstall;
+if ($('#topInstallBtn')) $('#topInstallBtn').onclick = triggerAppInstall;
+if ($('#popupInstallBtn')) $('#popupInstallBtn').onclick = triggerAppInstall;
 
 /* --- 2. ADMIN APPROVAL NOTIFICATION & SOUND ENGINE --- */
 function playAlertBeep() {
@@ -139,7 +160,7 @@ async function sendAdminNotification(title, body) {
   } catch (e) {}
 }
 
-$('#admNotifBtn').onclick = requestAdminNotifPermission;
+if ($('#admNotifBtn')) $('#admNotifBtn').onclick = requestAdminNotifPermission;
 if ('Notification' in window && Notification.permission === 'granted') {
   $('#notifDot')?.classList.replace('bg-yellow-300', 'bg-green-400');
 }
@@ -150,20 +171,23 @@ const addLog = m => {
   setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set, log: D.log }, { merge: true }).catch(() => {});
 };
 
-/* --- 3. REAL-TIME FIRESTORE LISTENERS (DETECTS NEW PENDING LISTINGS) --- */
-let listenersStarted = false;
-function startListeners() {
-  if (listenersStarted) return;
-  listenersStarted = true;
+/* --- 3. REAL-TIME FIRESTORE LISTENERS (WITH CLEANUP ON LOGOUT) --- */
+function stopListeners() {
+  if (unsubListings) { unsubListings(); unsubListings = null; }
+  if (unsubUsers) { unsubUsers(); unsubUsers = null; }
+  if (unsubSettings) { unsubSettings(); unsubSettings = null; }
+}
 
-  onSnapshot(collection(db, "listings"), snap => {
+function startListeners() {
+  stopListeners();
+
+  unsubListings = onSnapshot(collection(db, "listings"), snap => {
     const arr = [];
     snap.forEach(dc => {
       const data = dc.data();
       const item = { id: dc.id, ...data };
       arr.push(item);
 
-      // Check if a brand-new PENDING listing arrived for approval
       if (data.status === 'pending') {
         if (firstAdminLoadDone && !knownPendingIds.has(dc.id)) {
           const alertTitle = `🔔 Approval Chahiye: ${data.type || 'Room'} in ${data.loc || 'Patna'}`;
@@ -180,20 +204,23 @@ function startListeners() {
     render();
   }, () => {});
 
-  onSnapshot(collection(db, "users"), snap => {
+  unsubUsers = onSnapshot(collection(db, "users"), snap => {
     const arr = [];
     snap.forEach(dc => arr.push({ id: dc.id, ...dc.data() }));
     D.users = arr;
     render();
   }, () => {});
 
-  onSnapshot(doc(db, "settings", "config"), snap => {
+  unsubSettings = onSnapshot(doc(db, "settings", "config"), snap => {
     if (snap.exists()) {
       const data = snap.data();
       if (data.ads) D.ads = data.ads;
       if (data.set) D.set = { ...D.set, ...data.set };
       if (data.log) D.log = data.log;
-      render();
+      // Agar Admin kisi input/textarea me type kar raha hai to focus kharab na ho
+      if (!document.activeElement?.dataset?.in) {
+        render();
+      }
     }
   }, () => {});
 }
@@ -265,18 +292,17 @@ function rows() {
 
   return L.map((l, i) => {
     const [c, t] = stc[l.status] || stc.pending;
-    const photos = Array.isArray(l.photos) ? l.photos.filter(Boolean) : [];
+    const photos = Array.isArray(l.photos) ? l.photos.map(safeImgSrc).filter(Boolean) : [];
     const tags = Array.isArray(l.tags) ? l.tags : [];
     const cleanPh = String(l.ownerPhone || '').replace(/\D/g, '').slice(-10);
 
-    // Client uploaded photos preview (Tap to zoom full screen)
     const photoBlock = photos.length > 0 ? `
       <div class="mt-3">
         <div class="text-[10.5px] font-extrabold mb-1.5" style="color:var(--mut)">CLIENT UPLOADED PHOTOS (${photos.length}) · Tap to Zoom:</div>
         <div class="grid ${photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
           ${photos.map((src, idx) => `
             <div class="relative rounded-2xl overflow-hidden border cursor-pointer" style="aspect-ratio:16/10;border-color:var(--line)">
-              <img src="${esc(src)}" data-zoom="${esc(src)}" class="w-full h-full object-cover" alt="Photo ${idx + 1}">
+              <img src="${src}" data-zoom="${src}" class="w-full h-full object-cover" loading="lazy" decoding="async" alt="Photo ${idx + 1}">
               <span class="absolute bottom-1.5 right-2 bg-black/65 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Photo ${idx + 1} 🔍</span>
             </div>
           `).join('')}
@@ -301,20 +327,17 @@ function rows() {
 
       ${photoBlock}
 
-      <!-- FULL DESCRIPTION & TAGS -->
       <div class="mt-3 p-3 rounded-2xl text-xs leading-relaxed" style="background:var(--bg)">
         <div class="font-bold mb-1" style="color:var(--tx)">Pura Details / Description:</div>
         <p style="color:var(--mut)">${esc(l.d || 'Koi description nahi likha gaya hai.')}</p>
         ${tags.length ? `<div class="flex flex-wrap gap-1.5 mt-2">${tags.map(tg => `<span class="px-2 py-0.5 rounded-full text-[10.5px] font-bold soft">${esc(tg)}</span>`).join('')}</div>` : ''}
       </div>
 
-      <!-- OWNER INFO & DIRECT CONTACT -->
       <div class="mt-2.5 flex items-center justify-between text-xs font-bold px-1">
         <span>👤 Owner: ${esc(l.ownerName || 'User')}</span>
         ${cleanPh ? `<a href="tel:+91${esc(cleanPh)}" class="underline" style="color:var(--a)">📞 +91 ${esc(cleanPh)}</a>` : ''}
       </div>
 
-      <!-- ADMIN ACTION BUTTONS -->
       <div class="flex flex-wrap gap-2 mt-3.5 pt-3" style="border-top:1px solid var(--line)">
         ${l.status !== 'approved' ? `<button data-a="approve" data-id="${esc(l.id)}" class="ab ok flex-1 justify-center !h-10">${ic('check', '!w-4 !h-4')}Approve & Live</button>` : ''}
         ${l.status !== 'rejected' ? `<button data-a="reject" data-id="${esc(l.id)}" class="ab wt flex-1 justify-center !h-10">${ic('x', '!w-4 !h-4')}Reject</button>` : ''}
@@ -353,9 +376,30 @@ function render() {
   $('#pendN').textContent = D.listings.filter(l => l.status === 'pending').length;
 }
 
-/* --- 6. AUTO-LOGIN & ACTIONS --- */
-onAuthStateChanged(auth, user => {
+/* --- 6. STRICT ADMIN VERIFICATION & LOGIN --- */
+// Server-side Firestore Rule check: Sirf asli Admin hi 'users' collection list kar sakta hai
+async function verifyAdminAccess(user) {
+  if (!user || !user.email) return false;
+  try {
+    await getDocs(collection(db, "users"));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+onAuthStateChanged(auth, async user => {
   if (user) {
+    const isRealAdmin = await verifyAdminAccess(user);
+    if (!isRealAdmin) {
+      stopListeners();
+      await signOut(auth);
+      $('#app').classList.add('hidden');
+      $('#login').classList.remove('hidden');
+      $('#pinErr').textContent = 'Access Denied! Sirf Authorized Admin account allowed hai.';
+      return;
+    }
+    $('#pinErr').textContent = '';
     $('#login').classList.add('hidden');
     $('#app').classList.remove('hidden');
     if (location.hash === '#lst-pending') {
@@ -363,6 +407,10 @@ onAuthStateChanged(auth, user => {
     }
     startListeners();
     render();
+  } else {
+    stopListeners();
+    $('#app').classList.add('hidden');
+    $('#login').classList.remove('hidden');
   }
 });
 
@@ -375,7 +423,13 @@ async function login() {
   }
   $('#pinErr').textContent = 'Authenticating securely...';
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const isRealAdmin = await verifyAdminAccess(cred.user);
+    if (!isRealAdmin) {
+      await signOut(auth);
+      $('#pinErr').textContent = 'Access Denied! Yeh account Admin nahi hai.';
+      return;
+    }
     $('#pinErr').textContent = '';
     $('#login').classList.add('hidden');
     $('#app').classList.remove('hidden');
@@ -391,12 +445,14 @@ $('#admPass').onkeydown = e => { if (e.key === 'Enter') login(); };
 
 const R = document.documentElement;
 document.addEventListener('click', async e => {
-  // Image Zoom Handler
   const zoomTarget = e.target.closest('[data-zoom]');
   if (zoomTarget) {
-    $('#zoomImg').src = zoomTarget.dataset.zoom;
-    $('#imgZoomModal').classList.add('open');
-    pushAdminState('#zoom');
+    const validSrc = safeImgSrc(zoomTarget.dataset.zoom);
+    if (validSrc) {
+      $('#zoomImg').src = validSrc;
+      $('#imgZoomModal').classList.add('open');
+      pushAdminState('#zoom');
+    }
     return;
   }
 
@@ -404,115 +460,130 @@ document.addEventListener('click', async e => {
   if (!t) return;
   const a = t.dataset.a, id = t.dataset.id;
 
-  if (a === 'reqNotif') {
-    requestAdminNotifPermission();
-  }
-  else if (a === 'tab') {
-    V = t.dataset.v;
-    if (t.dataset.f) F = t.dataset.f;
-    pushAdminState(`#${V}-${F}`);
-    window.scrollTo({ top: 0 });
-    render();
-  }
-  else if (a === 'flt') {
-    F = t.dataset.f;
-    pushAdminState(`#lst-${F}`);
-    render();
-  }
-  else if (a === 'approve') {
-    await updateDoc(doc(db, "listings", id), { status: 'approved' });
-    addLog('Approved listing');
-    toast('Listing Approved! User App mein live ho gayi ✓');
-  }
-  else if (a === 'reject') {
-    await updateDoc(doc(db, "listings", id), { status: 'rejected' });
-    addLog('Rejected listing');
-    toast('Listing Rejected');
-  }
-  else if (a === 'del') {
-    if (confirm('Kya aap is listing ko hamesha ke liye delete karna chahte hain?')) {
-      await deleteDoc(doc(db, "listings", id));
-      addLog('Deleted listing');
-      toast('Listing delete ho gayi');
+  try {
+    if (a === 'reqNotif') {
+      requestAdminNotifPermission();
     }
-  }
-  else if (a === 'uver') {
-    const u = D.users.find(x => x.id === id);
-    if (u) await updateDoc(doc(db, "users", id), { ver: !u.ver });
-  }
-  else if (a === 'ublk') {
-    const u = D.users.find(x => x.id === id);
-    if (u) await updateDoc(doc(db, "users", id), { blk: !u.blk });
-  }
-  else if (a === 'tog') {
-    const o = t.dataset.g === 'ads' ? D.ads[t.dataset.k] : D.set;
-    const k = t.dataset.g === 'ads' ? 'on' : t.dataset.k;
-    o[k] = !o[k];
-    await setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true });
-    toast('Setting live update ho gayi');
-  }
-  else if (a === 'adsave') {
-    await setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true });
-    toast('Ad settings User App par live ho gayi!');
-  }
-  else if (a === 'pal') R.dataset.pal = t.dataset.p;
-  else if (a === 'mode') {
-    const c = R.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
-    R.dataset.theme = c === 'dark' ? 'light' : 'dark';
-  }
-  else if (a === 'openAdd') {
-    $('#nL').innerHTML = LOCS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
-    $('#nO').innerHTML = (D.users.length ? D.users : INITIAL_USERS).map(u => `<option value="${esc(u.phone)}" data-name="${esc(u.name)}">${esc(u.name)} (${esc(u.phone)})</option>`).join('');
-    $('#nErr').textContent = '';
-    $('#modal').classList.add('open');
-    pushAdminState('#add-listing');
-  }
-  else if (a === 'closeAdd') {
-    $('#modal').classList.remove('open');
-    if (location.hash === '#add-listing') history.back();
-  }
-  else if (a === 'saveAdd') {
-    const T = $('#nT').value.trim(), P = $('#nP').value.trim();
-    if (!T || !P) { $('#nErr').textContent = 'Title aur price zaroor bharein'; return; }
-    const selOpt = $('#nO').selectedOptions[0];
-    const ownerPhone = $('#nO').value || '9812300001';
-    const ownerName = selOpt ? selOpt.dataset.name : 'Admin';
-    const type = $('#nTy').value;
+    else if (a === 'tab') {
+      V = t.dataset.v;
+      if (t.dataset.f) F = t.dataset.f;
+      pushAdminState(`#${V}-${F}`);
+      window.scrollTo({ top: 0 });
+      render();
+    }
+    else if (a === 'flt') {
+      F = t.dataset.f;
+      pushAdminState(`#lst-${F}`);
+      render();
+    }
+    else if (a === 'approve') {
+      await updateDoc(doc(db, "listings", id), { status: 'approved' });
+      addLog('Approved listing');
+      toast('Listing Approved! User App mein live ho gayi ✓');
+    }
+    else if (a === 'reject') {
+      await updateDoc(doc(db, "listings", id), { status: 'rejected' });
+      addLog('Rejected listing');
+      toast('Listing Rejected');
+    }
+    else if (a === 'del') {
+      if (confirm('Kya aap is listing ko hamesha ke liye delete karna chahte hain?')) {
+        await deleteDoc(doc(db, "listings", id));
+        addLog('Deleted listing');
+        toast('Listing delete ho gayi');
+      }
+    }
+    else if (a === 'uver') {
+      const u = D.users.find(x => x.id === id);
+      if (u) await updateDoc(doc(db, "users", id), { ver: !u.ver });
+    }
+    else if (a === 'ublk') {
+      const u = D.users.find(x => x.id === id);
+      if (u) await updateDoc(doc(db, "users", id), { blk: !u.blk });
+    }
+    else if (a === 'tog') {
+      const o = t.dataset.g === 'ads' ? D.ads[t.dataset.k] : D.set;
+      const k = t.dataset.g === 'ads' ? 'on' : t.dataset.k;
+      o[k] = !o[k];
+      await setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true });
+      toast('Setting live update ho gayi');
+    }
+    else if (a === 'adsave') {
+      await setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true });
+      toast('Ad settings User App par live ho gayi!');
+    }
+    else if (a === 'pal') R.dataset.pal = t.dataset.p;
+    else if (a === 'mode') {
+      const c = R.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+      R.dataset.theme = c === 'dark' ? 'light' : 'dark';
+    }
+    else if (a === 'openAdd') {
+      $('#nL').innerHTML = LOCS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+      $('#nO').innerHTML = (D.users.length ? D.users : INITIAL_USERS).map(u => `<option value="${esc(u.phone)}" data-name="${esc(u.name)}">${esc(u.name)} (${esc(u.phone)})</option>`).join('');
+      $('#nErr').textContent = '';
+      $('#modal').classList.add('open');
+      pushAdminState('#add-listing');
+    }
+    else if (a === 'closeAdd') {
+      $('#modal').classList.remove('open');
+      if (location.hash === '#add-listing') history.back();
+    }
+    else if (a === 'saveAdd') {
+      const T = $('#nT').value.trim(), P = $('#nP').value.trim();
+      if (!T || !P) { $('#nErr').textContent = 'Title aur price zaroor bharein'; return; }
+      const selOpt = $('#nO').selectedOptions[0];
+      const ownerPhone = $('#nO').value || '9812300001';
+      const ownerName = selOpt ? selOpt.dataset.name : 'Admin';
+      const type = $('#nTy').value;
 
-    await addDoc(collection(db, "listings"), {
-      title: T.slice(0, 100),
-      type,
-      loc: $('#nL').value,
-      price: P.slice(0, 25),
-      u: type === 'Plot' ? '' : '/mo',
-      ownerName,
-      ownerPhone,
-      tags: ['Verified', type, $('#nL').value],
-      d: `${T} available in ${$('#nL').value}, Patna.`,
-      status: 'approved',
-      ago: 'Aaj',
-      createdAt: Date.now()
-    });
-    addLog('Nayi listing: ' + T);
-    $('#nT').value = $('#nP').value = '';
-    $('#modal').classList.remove('open');
-    V = 'lst'; F = 'all';
-    toast('Listing jud gayi aur User App par live hai!');
-  }
-  else if (a === 'logout') {
-    await signOut(auth);
-    $('#app').classList.add('hidden');
-    $('#login').classList.remove('hidden');
-    $('#admEmail').value = $('#admPass').value = '';
+      await addDoc(collection(db, "listings"), {
+        title: T.slice(0, 100),
+        type,
+        loc: $('#nL').value,
+        price: P.slice(0, 25),
+        numPrice: parseNumericPrice(P),
+        u: type === 'Plot' ? '' : '/mo',
+        ownerName,
+        ownerPhone,
+        ownerUid: auth.currentUser ? auth.currentUser.uid : 'admin',
+        photos: [],
+        consentGiven: true,
+        tags: ['Verified', type, $('#nL').value],
+        d: `${T} available in ${$('#nL').value}, Patna.`,
+        status: 'approved',
+        ago: 'Aaj',
+        createdAt: Date.now()
+      });
+      addLog('Nayi listing: ' + T);
+      $('#nT').value = $('#nP').value = '';
+      $('#modal').classList.remove('open');
+      V = 'lst'; F = 'all';
+      toast('Listing jud gayi aur User App par live hai!');
+    }
+    else if (a === 'logout') {
+      stopListeners();
+      await signOut(auth);
+      $('#app').classList.add('hidden');
+      $('#login').classList.remove('hidden');
+      $('#admEmail').value = $('#admPass').value = '';
+    }
+  } catch (err) {
+    toast('Action failed: Permission ya network check karein');
   }
 });
 
+let settingsTimer = null;
 document.addEventListener('input', e => {
-  if (e.target.id === 'q') { Q = e.target.value; $('#rows').innerHTML = rows(); }
-  else if (e.target.dataset.in) {
+  if (e.target.id === 'q') {
+    Q = e.target.value;
+    $('#rows').innerHTML = rows();
+  } else if (e.target.dataset.in) {
     const [g, k] = e.target.dataset.in.split('.');
     g === 'ads' ? D.ads[k].code = e.target.value : D.set[k] = e.target.value;
-    setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true }).catch(() => {});
+    clearTimeout(settingsTimer);
+    settingsTimer = setTimeout(() => {
+      setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set }, { merge: true }).catch(() => {});
+    }, 500);
   }
 });
 
