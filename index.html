@@ -46,17 +46,34 @@
   </div>
 </div>
 
-<!-- SECURE FIREBASE LOGIN (NO EMAIL EXPOSED IN CODE) -->
-<div id="login" class="fixed inset-0 z-50 grad grid place-items-center p-6">
-  <div class="cd w-full max-w-sm p-7 text-center" style="border-radius:30px">
-    <div class="grad w-16 h-16 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-8 !h-8"><use href="#i-lock"/></svg></div>
-    <h1 class="hd font-extrabold text-2xl mt-4">AwasPatna Admin</h1>
-    <p class="text-sm mt-1" style="color:var(--mut)">Authorized Admin Access Only</p>
-    <input id="admEmail" type="email" autocomplete="off" placeholder="Authorized Admin Email" class="fld mt-5 text-sm" style="user-select:text">
-    <input id="admPass" type="password" autocomplete="off" placeholder="Admin Password" class="fld mt-2.5 text-sm" style="user-select:text">
-    <p id="pinErr" class="text-xs text-red-500 mt-2 min-h-[1rem]"></p>
-    <button id="enter" class="grad w-full py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Secure Login karein</button>
-    <p class="text-[10.5px] mt-4" style="color:var(--mut)">Protected by Server-Side Firebase Security Rules</p>
+<!-- SECURE FIREBASE LOGIN (GOOGLE 1-CLICK + EMAIL/PASSWORD) -->
+<div id="login" class="fixed inset-0 z-50 grad grid place-items-center p-5">
+  <div class="cd w-full max-w-sm p-6 text-center" style="border-radius:30px">
+    <div class="grad w-15 h-15 rounded-3xl mx-auto grid place-items-center shadow-lg"><svg class="ic !w-7 !h-7"><use href="#i-lock"/></svg></div>
+    <h1 class="hd font-extrabold text-2xl mt-3">AwasPatna Admin</h1>
+    <p class="text-xs mt-1" style="color:var(--mut)">Authorized Admin Access Only</p>
+
+    <!-- 1-CLICK GOOGLE LOGIN BUTTON (NO PASSWORD TYPING NEEDED) -->
+    <button id="admGoogleBtn" type="button" class="w-full h-12 rounded-2xl font-extrabold text-sm mt-4 flex items-center justify-center gap-2.5 shadow-md active:scale-95 transition" style="background:#fff;color:#1f2937;border:1.5px solid #d1d5db">
+      <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      <span>Google se Admin Login Karein (1-Tap)</span>
+    </button>
+
+    <div class="flex items-center gap-2 my-3 text-[10px] font-bold" style="color:var(--mut)">
+      <span class="flex-1 h-px" style="background:var(--line)"></span>
+      <span>YA EMAIL & PASSWORD SE</span>
+      <span class="flex-1 h-px" style="background:var(--line)"></span>
+    </div>
+
+    <input id="admEmail" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Authorized Admin Email" class="fld text-sm" style="user-select:text">
+    <div class="relative mt-2.5">
+      <input id="admPass" type="password" autocomplete="current-password" autocapitalize="none" placeholder="Admin Password" class="fld text-sm pr-16" style="user-select:text">
+      <button id="togPassBtn" type="button" class="absolute right-2.5 top-1/2 -translate-y-1/2 px-2 py-1 rounded-lg text-[11px] font-extrabold soft">Show</button>
+    </div>
+
+    <p id="pinErr" class="text-xs text-red-500 mt-2 min-h-[1rem] leading-snug"></p>
+    <button id="enter" type="button" class="grad w-full py-3.5 rounded-2xl font-extrabold mt-1 active:scale-95 transition">Email Se Login Karein</button>
+    <button id="resetPassBtn" type="button" class="text-xs font-bold underline mt-3 block mx-auto" style="color:var(--a)">Password Bhool Gaye? Gmail par Reset Link Bhejein</button>
   </div>
 </div>
 
@@ -107,7 +124,7 @@
   </div>
 </div>
 
-<!-- FULL-SCREEN IMAGE ZOOM MODAL FOR ADMIN INSPECTION -->
+<!-- FULL-SCREEN IMAGE ZOOM MODAL -->
 <div id="imgZoomModal" class="modal fixed inset-0 z-[75] flex items-center justify-center p-4" style="background:rgba(0,0,0,.88)" onclick="this.classList.remove('open')">
   <img id="zoomImg" class="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl" alt="Property Preview">
 </div>
