@@ -1,5 +1,5 @@
 import { 
-  db, auth, googleProvider, signInWithPopup, sendPasswordResetEmail,
+  db, auth, sendPasswordResetEmail,
   collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc,
   signInWithEmailAndPassword, onAuthStateChanged, signOut 
 } from "./firebase-config.js";
@@ -10,6 +10,8 @@ const ic = (n, c = '') => `<svg class="ic ${c}"><use href="#i-${n}"/></svg>`;
 const esc = str => String(str ?? '').replace(/[&<>"']/g, m => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
 }[m]));
+
+const AUTHORIZED_ADMIN_EMAIL = "mehtaprem362@gmail.com";
 
 const LOCS = [
   'Boring Road', 'Kankarbagh', 'Rajendra Nagar', 'Patliputra', 'Bailey Road', 
@@ -113,7 +115,6 @@ async function requestAdminNotifPermission() {
   if (perm === 'granted') {
     $('#notifDot')?.classList.replace('bg-yellow-300', 'bg-green-400');
     toast('Approval Notifications ON ho gayi ✓');
-    sendAdminNotification('Admin Alerts Chalu Hain ✓', 'Jab bhi koi customer nayi listing daalega, aapko turant notification milega.');
   } else {
     toast('Kripya browser settings mein Notification Allow karein');
   }
@@ -231,7 +232,7 @@ window.addEventListener('popstate', e => {
   render();
 });
 
-/* --- 5. VIEWS (WITH 1-CLICK COPY UID & FULL PHOTO DETAILS) --- */
+/* --- 5. VIEWS --- */
 function dash() {
   const pendCount = D.listings.filter(l => l.status === 'pending').length;
   const st = [
@@ -250,7 +251,6 @@ function dash() {
       <button data-a="copyUid" data-uid="${esc(myUid)}" class="ab grad !h-8 !px-3 text-[11px]">Copy UID</button>
     </div>
     <div class="mt-2 font-mono text-xs font-bold break-all select-all p-2.5 rounded-xl" style="background:var(--bg)">${esc(myUid)}</div>
-    ${D.ruleError ? `<div class="mt-2 text-[11px] font-bold text-red-600">⚠️ Upar "Copy UID" dabakar is UID ko Firebase Console -> Firestore -> Rules mein paste karke Publish karein taaki saari listings dikhein!</div>` : `<div class="mt-1.5 text-[11px] font-bold text-green-600">✓ Firestore Admin Access Connected</div>`}
   </div>
 
   ${!notifGranted ? `
@@ -361,9 +361,20 @@ function render() {
   $('#pendN').textContent = D.listings.filter(l => l.status === 'pending').length;
 }
 
-/* --- 6. LOGIN HANDLERS (1-TAP GOOGLE + EMAIL/PASSWORD + RESET LINK) --- */
-onAuthStateChanged(auth, user => {
+/* --- 6. STRICT EMAIL-ONLY LOGIN HANDLERS (NO GOOGLE HACKER RISK) --- */
+onAuthStateChanged(auth, async user => {
   if (user) {
+    const userEmail = String(user.email || '').trim().toLowerCase();
+    
+    // STRICT SECURITY LOCK: Sirf authorized email hi andar aa sakta hai!
+    if (userEmail !== AUTHORIZED_ADMIN_EMAIL) {
+      await signOut(auth);
+      $('#pinErr.text-red-500').textContent = 'Access Denied! Sirf Main Admin hi login kar sakta hai.';
+      $('#login').classList.remove('hidden');
+      $('#app').classList.add('hidden');
+      return;
+    }
+
     $('#login').classList.add('hidden');
     $('#app').classList.remove('hidden');
     if (location.hash === '#lst-pending') {
@@ -384,36 +395,28 @@ if ($('#togPassBtn')) {
   };
 }
 
-// 1-Tap Google Admin Login
-if ($('#admGoogleBtn')) {
-  $('#admGoogleBtn').onclick = async () => {
-    $('#pinErr').textContent = 'Opening Google Sign-In...';
-    try {
-      await signInWithPopup(auth, googleProvider);
-      $('#pinErr').textContent = '';
-      toast('Google se Admin Login Safal ✓');
-    } catch (err) {
-      $('#pinErr').textContent = 'Google Error: ' + (err.code || err.message);
-    }
-  };
-}
-
-// Email + Password Login (Shows Exact Firebase Error Code)
+// Strict Email + Password Login
 async function login() {
   const email = $('#admEmail').value.trim().toLowerCase();
   const pass = $('#admPass').value.trim();
+  
   if (!email || !pass) {
     $('#pinErr').textContent = 'Admin Email aur Password dono daalein';
     return;
   }
-  $('#pinErr').textContent = 'Authenticating...';
+  if (email !== AUTHORIZED_ADMIN_EMAIL) {
+    $('#pinErr').textContent = 'Access Denied: Yah email authorized admin nahi hai!';
+    return;
+  }
+
+  $('#pinErr').textContent = 'Authenticating securely...';
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     $('#pinErr').textContent = '';
   } catch (err) {
     const code = err.code || '';
     if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
-      $('#pinErr').textContent = 'Password match nahi hua! Niche "Reset Link Bhejein" dabayein ya upar Google button se 1-click login karein.';
+      $('#pinErr').textContent = 'Galat Password! Niche "Reset Link Bhejein" dabayein.';
     } else {
       $('#pinErr').textContent = `Error (${code}): ${err.message}`;
     }
@@ -422,19 +425,19 @@ async function login() {
 $('#enter').onclick = login;
 $('#admPass').onkeydown = e => { if (e.key === 'Enter') login(); };
 
-// 1-Click Password Reset Email
+// Password Reset Link
 if ($('#resetPassBtn')) {
   $('#resetPassBtn').onclick = async () => {
     const email = $('#admEmail').value.trim().toLowerCase();
-    if (!email) {
-      $('#pinErr').textContent = 'Pehle upar box mein apna Admin Email likhein, phir is button ko dabayein';
+    if (email !== AUTHORIZED_ADMIN_EMAIL) {
+      $('#pinErr').textContent = 'Kripya sahi Authorized Admin Email daalein';
       $('#admEmail').focus();
       return;
     }
     try {
       await sendPasswordResetEmail(auth, email);
       $('#pinErr').style.color = '#15803d';
-      $('#pinErr').textContent = `✓ Password set karne ka link aapke Gmail (${email}) par bhej diya gaya hai! (Spam folder bhi check karein)`;
+      $('#pinErr').textContent = `✓ Password reset link aapke Gmail (${email}) par bhej diya gaya hai!`;
     } catch (err) {
       $('#pinErr').style.color = '#ef4444';
       $('#pinErr').textContent = 'Reset Error: ' + (err.code || err.message);
