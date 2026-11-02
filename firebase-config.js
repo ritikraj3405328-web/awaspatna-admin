@@ -4,7 +4,7 @@ import {
   collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { 
-  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut 
+  getAuth, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut 
 } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -27,9 +27,11 @@ try {
 }
 
 const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 auth.languageCode = 'en';
 
 export { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs,
+  db, auth, googleProvider, signInWithPopup, sendPasswordResetEmail,
+  collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs,
   signInWithEmailAndPassword, onAuthStateChanged, signOut 
 };
