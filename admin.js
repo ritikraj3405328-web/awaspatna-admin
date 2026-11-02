@@ -1,5 +1,6 @@
 import { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc,
+  db, auth, googleProvider, signInWithPopup, sendPasswordResetEmail,
+  collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc,
   signInWithEmailAndPassword, onAuthStateChanged, signOut 
 } from "./firebase-config.js";
 
@@ -27,7 +28,8 @@ let D = {
   listings: [],
   ads: { home: { on: false, code: '' }, feed: { on: false, code: '' } },
   set: { name: 'AwasPatna', wa: '', free: true, maint: false },
-  log: ['Firebase Secure Admin Active ✓']
+  log: ['Firebase Secure Admin Active ✓'],
+  ruleError: false
 };
 
 let knownPendingIds = new Set();
@@ -43,7 +45,7 @@ function toast(m) {
   toast.x = setTimeout(() => {
     t.style.opacity = 0;
     t.style.transform = 'translate(-50%,0)';
-  }, 2600);
+  }, 2800);
 }
 
 /* --- 1. 7-SECOND AUTO-REMOVE INSTALL POPUP --- */
@@ -154,6 +156,7 @@ function startListeners() {
   listenersStarted = true;
 
   onSnapshot(collection(db, "listings"), snap => {
+    D.ruleError = false;
     const arr = [];
     snap.forEach(dc => {
       const data = dc.data();
@@ -174,8 +177,9 @@ function startListeners() {
     arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     D.listings = arr;
     render();
-  }, err => {
-    toast('Unauthorized Account! Sirf Admin hi data dekh sakta hai.');
+  }, () => {
+    D.ruleError = true;
+    render();
   });
 
   onSnapshot(collection(db, "users"), snap => {
@@ -227,7 +231,7 @@ window.addEventListener('popstate', e => {
   render();
 });
 
-/* --- 5. VIEWS (WITH CLIENT IMAGES & FULL DETAILS) --- */
+/* --- 5. VIEWS (WITH 1-CLICK COPY UID & FULL PHOTO DETAILS) --- */
 function dash() {
   const pendCount = D.listings.filter(l => l.status === 'pending').length;
   const st = [
@@ -240,6 +244,15 @@ function dash() {
   const myUid = auth.currentUser ? auth.currentUser.uid : '';
 
   return `
+  <div class="cd p-4 mb-4" style="border:2px solid var(--a)">
+    <div class="flex items-center justify-between gap-2">
+      <div class="text-xs font-extrabold" style="color:var(--a)">🔑 Aapki Admin UID (Firestore Rules ke liye):</div>
+      <button data-a="copyUid" data-uid="${esc(myUid)}" class="ab grad !h-8 !px-3 text-[11px]">Copy UID</button>
+    </div>
+    <div class="mt-2 font-mono text-xs font-bold break-all select-all p-2.5 rounded-xl" style="background:var(--bg)">${esc(myUid)}</div>
+    ${D.ruleError ? `<div class="mt-2 text-[11px] font-bold text-red-600">⚠️ Upar "Copy UID" dabakar is UID ko Firebase Console -> Firestore -> Rules mein paste karke Publish karein taaki saari listings dikhein!</div>` : `<div class="mt-1.5 text-[11px] font-bold text-green-600">✓ Firestore Admin Access Connected</div>`}
+  </div>
+
   ${!notifGranted ? `
     <div class="cd p-3.5 mb-3.5 flex items-center justify-between gap-2" style="border:1.5px dashed var(--a)">
       <div class="text-xs font-bold">🔔 Nayi listing aane par phone alert paayein</div>
@@ -254,10 +267,6 @@ function dash() {
       <button data-a="tab" data-v="lst" data-f="pending" class="ab" style="background:#d97706;color:#fff">Dekhein →</button>
     </div>` : ''}
   <div class="grid grid-cols-2 gap-3">${st.map(([l, v, i, g]) => `<div class="${g ? 'grad' : 'cd'} p-4 row" style="border-radius:22px"><span class="${g ? 'bg-white/25' : 'soft'} w-10 h-10 rounded-2xl grid place-items-center">${ic(i)}</span><div class="hd font-extrabold text-3xl mt-3">${v}</div><div class="text-xs font-bold ${g ? 'opacity-85' : ''}" style="${g ? '' : 'color:var(--mut)'}">${l}</div></div>`).join('')}</div>
-  <div class="cd p-3.5 mt-4 text-xs" style="border-style:dashed">
-    <div class="font-extrabold" style="color:var(--a)">🔒 Aapki Secret Admin UID (Firestore Rules ke liye):</div>
-    <div class="mt-1 font-mono text-[11px] break-all select-all p-2 rounded-xl" style="background:var(--bg)">${esc(myUid)}</div>
-  </div>
   <div class="cd p-4 mt-4 row"><h3 class="hd font-bold mb-2">Recent activity</h3>${D.log.map(m => `<div class="flex items-center gap-2.5 py-2 text-[13px] font-semibold" style="border-top:1px solid var(--line)"><span class="w-2 h-2 rounded-full grad"></span>${esc(m)}</div>`).join('')}</div>`;
 }
 
@@ -352,7 +361,7 @@ function render() {
   $('#pendN').textContent = D.listings.filter(l => l.status === 'pending').length;
 }
 
-/* --- 6. AUTO-LOGIN & ACTIONS --- */
+/* --- 6. LOGIN HANDLERS (1-TAP GOOGLE + EMAIL/PASSWORD + RESET LINK) --- */
 onAuthStateChanged(auth, user => {
   if (user) {
     $('#login').classList.add('hidden');
@@ -365,28 +374,73 @@ onAuthStateChanged(auth, user => {
   }
 });
 
+// Show / Hide Password Toggle
+if ($('#togPassBtn')) {
+  $('#togPassBtn').onclick = () => {
+    const inp = $('#admPass');
+    const isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    $('#togPassBtn').textContent = isPass ? 'Hide' : 'Show';
+  };
+}
+
+// 1-Tap Google Admin Login
+if ($('#admGoogleBtn')) {
+  $('#admGoogleBtn').onclick = async () => {
+    $('#pinErr').textContent = 'Opening Google Sign-In...';
+    try {
+      await signInWithPopup(auth, googleProvider);
+      $('#pinErr').textContent = '';
+      toast('Google se Admin Login Safal ✓');
+    } catch (err) {
+      $('#pinErr').textContent = 'Google Error: ' + (err.code || err.message);
+    }
+  };
+}
+
+// Email + Password Login (Shows Exact Firebase Error Code)
 async function login() {
-  const email = $('#admEmail').value.trim();
-  const pass = $('#admPass').value;
+  const email = $('#admEmail').value.trim().toLowerCase();
+  const pass = $('#admPass').value.trim();
   if (!email || !pass) {
     $('#pinErr').textContent = 'Admin Email aur Password dono daalein';
     return;
   }
-  $('#pinErr').textContent = 'Authenticating securely...';
+  $('#pinErr').textContent = 'Authenticating...';
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     $('#pinErr').textContent = '';
-    $('#login').classList.add('hidden');
-    $('#app').classList.remove('hidden');
-    history.replaceState({ tab: 'dash', flt: 'all', modalOpen: false }, '', '#dash');
-    startListeners();
-    render();
   } catch (err) {
-    $('#pinErr').textContent = 'Access Denied! Galat Email ya Password.';
+    const code = err.code || '';
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
+      $('#pinErr').textContent = 'Password match nahi hua! Niche "Reset Link Bhejein" dabayein ya upar Google button se 1-click login karein.';
+    } else {
+      $('#pinErr').textContent = `Error (${code}): ${err.message}`;
+    }
   }
 }
 $('#enter').onclick = login;
 $('#admPass').onkeydown = e => { if (e.key === 'Enter') login(); };
+
+// 1-Click Password Reset Email
+if ($('#resetPassBtn')) {
+  $('#resetPassBtn').onclick = async () => {
+    const email = $('#admEmail').value.trim().toLowerCase();
+    if (!email) {
+      $('#pinErr').textContent = 'Pehle upar box mein apna Admin Email likhein, phir is button ko dabayein';
+      $('#admEmail').focus();
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      $('#pinErr').style.color = '#15803d';
+      $('#pinErr').textContent = `✓ Password set karne ka link aapke Gmail (${email}) par bhej diya gaya hai! (Spam folder bhi check karein)`;
+    } catch (err) {
+      $('#pinErr').style.color = '#ef4444';
+      $('#pinErr').textContent = 'Reset Error: ' + (err.code || err.message);
+    }
+  };
+}
 
 const R = document.documentElement;
 document.addEventListener('click', async e => {
@@ -402,7 +456,12 @@ document.addEventListener('click', async e => {
   if (!t) return;
   const a = t.dataset.a, id = t.dataset.id;
 
-  if (a === 'reqNotif') {
+  if (a === 'copyUid') {
+    const uid = t.dataset.uid || '';
+    navigator.clipboard?.writeText(uid);
+    toast('Admin UID Copy Ho Gayi ✓ Ab Firestore Rules mein paste karein');
+  }
+  else if (a === 'reqNotif') {
     requestAdminNotifPermission();
   }
   else if (a === 'tab') {
