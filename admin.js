@@ -378,14 +378,12 @@ function render() {
 
 /* --- 6. STRICT ADMIN VERIFICATION & LOGIN --- */
 // Server-side Firestore Rule check: Sirf asli Admin hi 'users' collection list kar sakta hai
-async function verifyAdminAccess(user) {
+// Direct Secure Email Check (Bina kisi extra database read ke)
+function verifyAdminAccess(user) {
   if (!user || !user.email) return false;
-  try {
-    await getDocs(collection(db, "users"));
-    return true;
-  } catch (e) {
-    return false;
-  }
+  // Yahan apna wahi email likhein jo aap Firebase Auth me use karte hain
+  const ADMIN_EMAIL = "mehtaprem362@gmail.com";
+  return user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 }
 
 onAuthStateChanged(auth, async user => {
