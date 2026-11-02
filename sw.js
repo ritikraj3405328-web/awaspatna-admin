@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awaspatna-admin-v6';
+const CACHE_NAME = 'awaspatna-admin-v5';
 
 self.addEventListener('install', () => self.skipWaiting());
 
