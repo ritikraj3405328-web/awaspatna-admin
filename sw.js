@@ -1,4 +1,4 @@
-const CACHE_NAME = 'awaspatna-admin-v5';
+const CACHE_NAME = 'awaspatna-admin-v8';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -13,7 +13,6 @@ self.addEventListener('fetch', e => {
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
 
-// Jab Admin notification par tap kare, to seedha Pending Listings tab khule
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(
