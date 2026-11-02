@@ -1,5 +1,5 @@
 import { 
-  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc, getDocs,
+  db, auth, collection, doc, onSnapshot, addDoc, setDoc, updateDoc, deleteDoc,
   signInWithEmailAndPassword, onAuthStateChanged, signOut 
 } from "./firebase-config.js";
 
@@ -22,11 +22,6 @@ const LOCS = [
   'Gulzarbagh', 'Patna City', 'Didarganj', 'Fatuha', 'Khagaul', 'Neora', 'Bihta'
 ];
 
-const INITIAL_USERS = [
-  { id: '9812300001', name: 'Ramesh Kumar', phone: '9812300001', ver: true, blk: false },
-  { id: '9934500002', name: 'Sunita Devi', phone: '9934500002', ver: true, blk: false }
-];
-
 let D = {
   users: [],
   listings: [],
@@ -40,6 +35,7 @@ let firstAdminLoadDone = false;
 
 function toast(m) {
   const t = $('#toast');
+  if (!t) return;
   t.textContent = m;
   t.style.opacity = 1;
   t.style.transform = 'translate(-50%,-8px)';
@@ -50,43 +46,44 @@ function toast(m) {
   }, 2600);
 }
 
-/* --- 1. 7-SECOND INSTALL POPUP & HEADER INSTALL BUTTON --- */
+/* --- 1. 7-SECOND AUTO-REMOVE INSTALL POPUP --- */
 let deferredInstallPrompt = null;
 const installPopup = $('#installPopup');
 
-// Auto-hide install popup after exactly 7 seconds (7000ms)
-const popupTimer = setTimeout(() => {
-  if (installPopup) {
-    installPopup.style.opacity = '0';
-    installPopup.style.pointerEvents = 'none';
-    setTimeout(() => installPopup.classList.add('hidden'), 300);
-  }
-}, 7000);
+function removeAdminInstallPopup() {
+  if (!installPopup) return;
+  installPopup.style.opacity = '0';
+  installPopup.style.pointerEvents = 'none';
+  setTimeout(() => installPopup.remove(), 300);
+}
 
-$('#popupCloseBtn').onclick = () => {
-  clearTimeout(popupTimer);
-  installPopup.classList.add('hidden');
-};
+const popupTimer = setTimeout(removeAdminInstallPopup, 7000);
+
+if ($('#popupCloseBtn')) {
+  $('#popupCloseBtn').onclick = () => {
+    clearTimeout(popupTimer);
+    removeAdminInstallPopup();
+  };
+}
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   deferredInstallPrompt = e;
 });
 
-async function triggerAppInstall() {
-  installPopup?.classList.add('hidden');
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    if (outcome === 'accepted') toast('App Install Ho Raha Hai ✓');
-    deferredInstallPrompt = null;
-  } else {
-    toast('Chrome ke 3-dot menu (⋮) par tap karke "Add to Home screen / Install App" chunein');
-  }
+if ($('#popupInstallBtn')) {
+  $('#popupInstallBtn').onclick = async () => {
+    clearTimeout(popupTimer);
+    removeAdminInstallPopup();
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+    } else {
+      toast('Chrome ke 3-dot menu (⋮) par tap karke "Install App" chunein');
+    }
+  };
 }
-
-$('#topInstallBtn').onclick = triggerAppInstall;
-$('#popupInstallBtn').onclick = triggerAppInstall;
 
 /* --- 2. ADMIN APPROVAL NOTIFICATION & SOUND ENGINE --- */
 function playAlertBeep() {
@@ -150,7 +147,7 @@ const addLog = m => {
   setDoc(doc(db, "settings", "config"), { ads: D.ads, set: D.set, log: D.log }, { merge: true }).catch(() => {});
 };
 
-/* --- 3. REAL-TIME FIRESTORE LISTENERS (DETECTS NEW PENDING LISTINGS) --- */
+/* --- 3. REAL-TIME FIRESTORE LISTENERS --- */
 let listenersStarted = false;
 function startListeners() {
   if (listenersStarted) return;
@@ -163,7 +160,6 @@ function startListeners() {
       const item = { id: dc.id, ...data };
       arr.push(item);
 
-      // Check if a brand-new PENDING listing arrived for approval
       if (data.status === 'pending') {
         if (firstAdminLoadDone && !knownPendingIds.has(dc.id)) {
           const alertTitle = `🔔 Approval Chahiye: ${data.type || 'Room'} in ${data.loc || 'Patna'}`;
@@ -178,7 +174,9 @@ function startListeners() {
     arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     D.listings = arr;
     render();
-  }, () => {});
+  }, err => {
+    toast('Unauthorized Account! Sirf Admin hi data dekh sakta hai.');
+  });
 
   onSnapshot(collection(db, "users"), snap => {
     const arr = [];
@@ -229,7 +227,7 @@ window.addEventListener('popstate', e => {
   render();
 });
 
-/* --- 5. VIEWS (WITH CLIENT IMAGES & FULL DETAILS IN LISTINGS) --- */
+/* --- 5. VIEWS (WITH CLIENT IMAGES & FULL DETAILS) --- */
 function dash() {
   const pendCount = D.listings.filter(l => l.status === 'pending').length;
   const st = [
@@ -239,6 +237,7 @@ function dash() {
     ['Total Users', D.users.length, 'users', 0]
   ];
   const notifGranted = ('Notification' in window && Notification.permission === 'granted');
+  const myUid = auth.currentUser ? auth.currentUser.uid : '';
 
   return `
   ${!notifGranted ? `
@@ -255,6 +254,10 @@ function dash() {
       <button data-a="tab" data-v="lst" data-f="pending" class="ab" style="background:#d97706;color:#fff">Dekhein →</button>
     </div>` : ''}
   <div class="grid grid-cols-2 gap-3">${st.map(([l, v, i, g]) => `<div class="${g ? 'grad' : 'cd'} p-4 row" style="border-radius:22px"><span class="${g ? 'bg-white/25' : 'soft'} w-10 h-10 rounded-2xl grid place-items-center">${ic(i)}</span><div class="hd font-extrabold text-3xl mt-3">${v}</div><div class="text-xs font-bold ${g ? 'opacity-85' : ''}" style="${g ? '' : 'color:var(--mut)'}">${l}</div></div>`).join('')}</div>
+  <div class="cd p-3.5 mt-4 text-xs" style="border-style:dashed">
+    <div class="font-extrabold" style="color:var(--a)">🔒 Aapki Secret Admin UID (Firestore Rules ke liye):</div>
+    <div class="mt-1 font-mono text-[11px] break-all select-all p-2 rounded-xl" style="background:var(--bg)">${esc(myUid)}</div>
+  </div>
   <div class="cd p-4 mt-4 row"><h3 class="hd font-bold mb-2">Recent activity</h3>${D.log.map(m => `<div class="flex items-center gap-2.5 py-2 text-[13px] font-semibold" style="border-top:1px solid var(--line)"><span class="w-2 h-2 rounded-full grad"></span>${esc(m)}</div>`).join('')}</div>`;
 }
 
@@ -269,14 +272,13 @@ function rows() {
     const tags = Array.isArray(l.tags) ? l.tags : [];
     const cleanPh = String(l.ownerPhone || '').replace(/\D/g, '').slice(-10);
 
-    // Client uploaded photos preview (Tap to zoom full screen)
     const photoBlock = photos.length > 0 ? `
       <div class="mt-3">
         <div class="text-[10.5px] font-extrabold mb-1.5" style="color:var(--mut)">CLIENT UPLOADED PHOTOS (${photos.length}) · Tap to Zoom:</div>
         <div class="grid ${photos.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} gap-2">
           ${photos.map((src, idx) => `
             <div class="relative rounded-2xl overflow-hidden border cursor-pointer" style="aspect-ratio:16/10;border-color:var(--line)">
-              <img src="${esc(src)}" data-zoom="${esc(src)}" class="w-full h-full object-cover" alt="Photo ${idx + 1}">
+              <img src="${esc(src)}" data-zoom="${esc(src)}" class="w-full h-full object-cover" loading="lazy" decoding="async" alt="Photo ${idx + 1}">
               <span class="absolute bottom-1.5 right-2 bg-black/65 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Photo ${idx + 1} 🔍</span>
             </div>
           `).join('')}
@@ -284,11 +286,11 @@ function rows() {
       </div>
     ` : `
       <div class="mt-2.5 p-2.5 rounded-xl text-xs font-bold text-center" style="background:var(--bg);color:var(--mut)">
-        ⚠️ Client ne koi real photo upload nahi ki hai (Default Graphic)
+        ⚠️ Client ne koi real photo upload nahi ki hai
       </div>
     `;
 
-    return `<div class="cd p-4 mb-4 row" style="animation-delay:${i * 40}ms;border:${l.status === 'pending' ? '2px solid #f59e0b' : '1px solid var(--line)'}">
+    return `<div class="cd p-4 mb-4 row" style="animation-delay:${Math.min(i, 5) * 40}ms;border:${l.status === 'pending' ? '2px solid #f59e0b' : '1px solid var(--line)'}">
       <div class="flex justify-between items-start gap-2">
         <div class="min-w-0">
           <span class="st ${c} inline-block mb-1.5">${t}</span>
@@ -301,20 +303,17 @@ function rows() {
 
       ${photoBlock}
 
-      <!-- FULL DESCRIPTION & TAGS -->
       <div class="mt-3 p-3 rounded-2xl text-xs leading-relaxed" style="background:var(--bg)">
         <div class="font-bold mb-1" style="color:var(--tx)">Pura Details / Description:</div>
         <p style="color:var(--mut)">${esc(l.d || 'Koi description nahi likha gaya hai.')}</p>
         ${tags.length ? `<div class="flex flex-wrap gap-1.5 mt-2">${tags.map(tg => `<span class="px-2 py-0.5 rounded-full text-[10.5px] font-bold soft">${esc(tg)}</span>`).join('')}</div>` : ''}
       </div>
 
-      <!-- OWNER INFO & DIRECT CONTACT -->
       <div class="mt-2.5 flex items-center justify-between text-xs font-bold px-1">
         <span>👤 Owner: ${esc(l.ownerName || 'User')}</span>
         ${cleanPh ? `<a href="tel:+91${esc(cleanPh)}" class="underline" style="color:var(--a)">📞 +91 ${esc(cleanPh)}</a>` : ''}
       </div>
 
-      <!-- ADMIN ACTION BUTTONS -->
       <div class="flex flex-wrap gap-2 mt-3.5 pt-3" style="border-top:1px solid var(--line)">
         ${l.status !== 'approved' ? `<button data-a="approve" data-id="${esc(l.id)}" class="ab ok flex-1 justify-center !h-10">${ic('check', '!w-4 !h-4')}Approve & Live</button>` : ''}
         ${l.status !== 'rejected' ? `<button data-a="reject" data-id="${esc(l.id)}" class="ab wt flex-1 justify-center !h-10">${ic('x', '!w-4 !h-4')}Reject</button>` : ''}
@@ -331,7 +330,7 @@ function lst() {
 
 function usr() {
   if (!D.users.length) return `<div class="cd p-8 text-center text-sm font-bold" style="color:var(--mut)">Koi user nahi mila</div>`;
-  return D.users.map((u, i) => `<div class="cd p-4 mb-3 row" style="animation-delay:${i * 40}ms"><div class="flex items-center gap-3"><span class="grad w-11 h-11 rounded-2xl grid place-items-center hd font-extrabold">${esc((u.name || 'U')[0])}</span><div class="flex-1 min-w-0"><b class="flex items-center gap-1">${esc(u.name)}${u.ver ? `<span style="color:var(--a)">${ic('shield', '!w-4 !h-4')}</span>` : ''}</b><div class="text-xs font-semibold" style="color:var(--mut)">+91 ${esc(u.phone)}</div></div><span class="st ${u.blk ? 'no' : 'ok'}">${u.blk ? 'Blocked' : 'Active'}</span></div>
+  return D.users.map((u, i) => `<div class="cd p-4 mb-3 row" style="animation-delay:${Math.min(i, 5) * 40}ms"><div class="flex items-center gap-3"><span class="grad w-11 h-11 rounded-2xl grid place-items-center hd font-extrabold">${esc((u.name || 'U')[0])}</span><div class="flex-1 min-w-0"><b class="flex items-center gap-1">${esc(u.name)}${u.ver ? `<span style="color:var(--a)">${ic('shield', '!w-4 !h-4')}</span>` : ''}</b><div class="text-xs font-semibold" style="color:var(--mut)">+91 ${esc(u.phone)}</div></div><span class="st ${u.blk ? 'no' : 'ok'}">${u.blk ? 'Blocked' : 'Active'}</span></div>
   <div class="flex gap-2 mt-3"><button data-a="uver" data-id="${esc(u.id)}" class="ab soft">${ic('shield', '!w-4 !h-4')}${u.ver ? 'Unverify' : 'Verify owner'}</button><button data-a="ublk" data-id="${esc(u.id)}" class="ab ${u.blk ? 'ok' : 'no'}">${ic('block', '!w-4 !h-4')}${u.blk ? 'Unblock' : 'Block'}</button></div></div>`).join('');
 }
 
@@ -391,7 +390,6 @@ $('#admPass').onkeydown = e => { if (e.key === 'Enter') login(); };
 
 const R = document.documentElement;
 document.addEventListener('click', async e => {
-  // Image Zoom Handler
   const zoomTarget = e.target.closest('[data-zoom]');
   if (zoomTarget) {
     $('#zoomImg').src = zoomTarget.dataset.zoom;
@@ -462,7 +460,6 @@ document.addEventListener('click', async e => {
   }
   else if (a === 'openAdd') {
     $('#nL').innerHTML = LOCS.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
-    $('#nO').innerHTML = (D.users.length ? D.users : INITIAL_USERS).map(u => `<option value="${esc(u.phone)}" data-name="${esc(u.name)}">${esc(u.name)} (${esc(u.phone)})</option>`).join('');
     $('#nErr').textContent = '';
     $('#modal').classList.add('open');
     pushAdminState('#add-listing');
@@ -472,11 +469,11 @@ document.addEventListener('click', async e => {
     if (location.hash === '#add-listing') history.back();
   }
   else if (a === 'saveAdd') {
-    const T = $('#nT').value.trim(), P = $('#nP').value.trim();
-    if (!T || !P) { $('#nErr').textContent = 'Title aur price zaroor bharein'; return; }
-    const selOpt = $('#nO').selectedOptions[0];
-    const ownerPhone = $('#nO').value || '9812300001';
-    const ownerName = selOpt ? selOpt.dataset.name : 'Admin';
+    const T = $('#nT').value.trim(), P = $('#nP').value.trim(), Ph = $('#nPh').value.trim();
+    if (!T || !P || !/^[6-9]\d{9}$/.test(Ph)) {
+      $('#nErr').textContent = 'Title, Price aur 10-digit Owner Mobile Number zaroori hai';
+      return;
+    }
     const type = $('#nTy').value;
 
     await addDoc(collection(db, "listings"), {
@@ -485,8 +482,10 @@ document.addEventListener('click', async e => {
       loc: $('#nL').value,
       price: P.slice(0, 25),
       u: type === 'Plot' ? '' : '/mo',
-      ownerName,
-      ownerPhone,
+      ownerUid: auth.currentUser.uid,
+      ownerName: 'Verified Owner',
+      ownerPhone: Ph,
+      consentGiven: true,
       tags: ['Verified', type, $('#nL').value],
       d: `${T} available in ${$('#nL').value}, Patna.`,
       status: 'approved',
@@ -494,7 +493,7 @@ document.addEventListener('click', async e => {
       createdAt: Date.now()
     });
     addLog('Nayi listing: ' + T);
-    $('#nT').value = $('#nP').value = '';
+    $('#nT').value = $('#nP').value = $('#nPh').value = '';
     $('#modal').classList.remove('open');
     V = 'lst'; F = 'all';
     toast('Listing jud gayi aur User App par live hai!');
